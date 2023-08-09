@@ -43,4 +43,4 @@ _deps
 *.out
 *.app
 
-/build
+build
