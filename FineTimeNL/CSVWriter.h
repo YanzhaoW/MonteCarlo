@@ -1,25 +1,13 @@
-#pragma once
-
-#include <concepts>
+#include "traits.hpp"
 #include <fmt/core.h>
 #include <fmt/ranges.h>
 #include <fstream>
 #include <functional>
+#include <iostream>
 #include <range/v3/view.hpp>
 #include <string>
 #include <vector>
 
-template <int size1, std::size_t... sizes>
-concept Equal = ((size1 == sizes) && ...);
-
-template <int size1, std::size_t... sizes>
-concept LessThan = ((size1 < sizes) && ...);
-
-template <int size1, std::size_t... sizes>
-concept NoLessThan = ((size1 >= sizes) && ...);
-
-template <typename Type, typename Par>
-concept Constructible_from = requires(Par par) { std::remove_cvref_t<Type>{ par }; };
 
 template <int index, typename... T1>
     requires NoLessThan<index, std::tuple_size_v<std::remove_cvref_t<T1>>...>
@@ -76,9 +64,9 @@ class CSVWriter
 
     void write(std::string_view filename)
     {
+        std::cout << "writing to file " << filename << "\n";
         auto ostream = std::ofstream(filename.data(), std::ios_base::out | std::ios_base::trunc);
         write_to_file(ostream);
-        ostream.close();
     }
 
   private:
