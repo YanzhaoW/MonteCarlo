@@ -44,7 +44,7 @@ auto main(int argc, char** argv) -> int
                              CSVColumn<float>{ "stderr" } };
     auto all_prob_futures = fineTimeMC.Run_all_probs(writer, optresult["max"].as<double>());
 
-    auto futureFixProb = fineTimeMC.RunWithFixDistribution(0.3);
+    auto futureFixProb = fineTimeMC.RunWithFixDistribution(optresult["prob"].as<double>());
 
     // waiting for results:
     for (auto& future : all_prob_futures)

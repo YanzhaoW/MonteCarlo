@@ -74,7 +74,7 @@ class FineTimeMC
                                      multinomial.SetLoopSize(loopSize_);
                                      const auto probs = dis_generator_(distribution, midProb);
                                      multinomial.Loop_on(distribution, inserter);
-                                     auto& [pre, mid, post] = probs;
+                                     auto [pre, post] = GetCenterBoundary(distribution, totalSamples_);
                                      inserter.Draw({ pre, post });
                                  });
         return future;
