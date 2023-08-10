@@ -10,9 +10,9 @@
 
 template <typename T>
 concept Loopable = requires(T loopOp) {
-    loopOp.Init();
-    loopOp.Finish();
-};
+                       loopOp.Init();
+                       loopOp.Finish();
+                   };
 
 static std::mutex PRINT_MUTEX; // NOLINT
 inline void Print(std::string_view str)
@@ -45,13 +45,11 @@ class FineTimeMC
     explicit FineTimeMC(unsigned int num)
         : totalSamples_{ num }
     {
-        multinomial_.SetEntrySize(num);
     }
 
     void SetLoopSize(unsigned int loopSize)
     {
         loopSize_ = loopSize;
-        multinomial_.SetLoopSize(loopSize);
     }
 
     void SetThreadsNum(unsigned int num)
@@ -66,14 +64,23 @@ class FineTimeMC
 
     [[nodiscard]] auto RunWithFixDistribution(const auto& midProb)
     {
-        std::vector<double> distribution;
-        auto inserter = UniformInserter{ totalSamples_, "fix distribution" };
-        const auto probs = dis_generator_(distribution, midProb);
-        multinomial_.Loop_on(distribution, inserter);
-        return std::make_tuple(std::move(inserter), GetCenterBoundary(distribution, totalSamples_));
+        auto future = std::async(std::launch::async,
+                                 [this, midProb]()
+                                 {
+                                     std::vector<double> distribution;
+                                     auto inserter = UniformInserter{ totalSamples_, "fix distribution" };
+                                     auto multinomial = MultiNomial();
+                                     multinomial.SetEntrySize(totalSamples_);
+                                     multinomial.SetLoopSize(loopSize_);
+                                     const auto probs = dis_generator_(distribution, midProb);
+                                     multinomial.Loop_on(distribution, inserter);
+                                     auto& [pre, mid, post] = probs;
+                                     inserter.Draw({ pre, post });
+                                 });
+        return future;
     }
 
-    void Run_all_probs(auto& writer)
+    [[nodiscard]] auto Run_all_probs(auto& writer, double max = 1.)
     {
         if (sample_size_ == 0)
         {
@@ -82,36 +89,38 @@ class FineTimeMC
 
         auto threads = Divide_into(sample_size_, threads_num_);
 
+        std::vector<std::future<void>> thread_results;
+        thread_results.reserve(threads_num_);
+
         for (const auto& thread_loopN : threads)
         {
             auto future = std::async(
                 std::launch::async,
-                [this, &writer](unsigned int loopN)
+                [this, &writer, max](unsigned int loopN)
                 {
                     // std::cout << loopN << "\n";
                     std::string histname = fmt::format("hist_{}", threads_count_++);
                     auto inserter = UniformInserter{ totalSamples_, histname };
-                    Epoch(loopN, inserter, writer);
+                    Epoch(loopN, inserter, writer, max);
                     Add_inserter(std::move(inserter));
                 },
                 thread_loopN);
-            thread_results_.emplace_back(std::move(future));
+            thread_results.emplace_back(std::move(future));
         }
-
-        for (auto& result : thread_results_)
-        {
-            result.get();
-        }
+        return thread_results;
     }
 
-    void Epoch(int loopN, auto& inserter, auto& writer)
+    void Epoch(int loopN, auto& inserter, auto& writer, double max)
     {
-        thread_local std::vector<double> distribution;
+        auto multinomial = MultiNomial();
+        multinomial.SetEntrySize(totalSamples_);
+        multinomial.SetLoopSize(loopSize_);
+        std::vector<double> distribution;
         for (size_t counter{}; counter < loopN; ++counter)
         {
             inserter.Init();
-            const auto [pre, mid, post] = dis_generator_(distribution);
-            multinomial_.Loop_on(distribution, inserter);
+            const auto [pre, mid, post] = dis_generator_(distribution, 0., max);
+            multinomial.Loop_on(distribution, inserter);
 
             Result epoch_result;
             epoch_result.stat = inserter.Finish();
@@ -135,9 +144,7 @@ class FineTimeMC
     unsigned int threads_num_ = 1;
     std::atomic<int> threads_count_ = 0;
     DisGenerator<binSize> dis_generator_;
-    MultiNomial multinomial_{};
     std::vector<UniformInserter> uniformInserter_{};
-    std::vector<std::future<void>> thread_results_;
     std::mutex mu_recorder_;
 
     void RecordResult(auto& result, auto& writer)

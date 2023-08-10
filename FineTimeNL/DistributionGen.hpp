@@ -41,11 +41,11 @@ class DisGenerator
         return vec;
     }
 
-    auto Generate(std::vector<double>& distribution, double value) const
+    auto Generate(std::vector<double>& distribution, double value, double max = 1.) const
     {
         distribution.clear();
         distribution.reserve(size_);
-        value = (value == 0.) ? engine_() : value;
+        value = (value == 0.) ? engine_() * max : value;
         distribution.push_back(value);
         UniformSplit<size_ - 1>(1 - value, std::back_inserter(distribution));
         // auto sum = 0.;
@@ -59,9 +59,9 @@ class DisGenerator
         std::iter_swap(distribution.begin(), distribution.begin() + (size_ / 2));
     }
 
-    auto operator()(std::vector<double>& distribution, double mid_prob = 0.) const
+    auto operator()(std::vector<double>& distribution, double mid_prob = 0., double max = 1.) const
     {
-        Generate(distribution, mid_prob);
+        Generate(distribution, mid_prob, max);
         size_t mid_index = distribution.size() / 2;
         return std::make_tuple(distribution[mid_index - 1], distribution[mid_index], distribution[mid_index + 1]);
     }

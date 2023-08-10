@@ -2,7 +2,10 @@
 ms-gsl/4.0.0
 range-v3/0.12.0
 fmt/10.0.0
-rapidcsv/8.77
+cxxopts/3.1.1
+
+[tool_requires]
+cmake/3.27.1
 
 [generators]
 CMakeDeps

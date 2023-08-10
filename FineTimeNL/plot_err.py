@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 
 sns.set_theme()
 
-csv_filename = "build/data.csv"
+csv_filename = "data.csv"
 
 data = pd.read_csv(csv_filename, skipinitialspace = True );
 

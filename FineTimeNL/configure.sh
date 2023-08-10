@@ -1,3 +1,5 @@
 conan profile detect --force
-conan install . --output-folder=build/conanPkg/ --build=missing --settings=build_type=RelWithDebInfo
-cmake --fresh -S . -B ./build -DCMAKE_TOOLCHAIN_FILE=conanPkg/conan_toolchain.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo
+conanfolder=conanPkg
+conan install . --output-folder=build/${conanfolder} --build=missing --settings=build_type=RelWithDebInfo
+source build/${conanfolder}/conanbuild.sh
+cmake --fresh -S . -B ./build -DCMAKE_TOOLCHAIN_FILE=${conanfolder}/conan_toolchain.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo

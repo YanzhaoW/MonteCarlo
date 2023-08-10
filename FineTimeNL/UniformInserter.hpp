@@ -47,10 +47,10 @@ class UniformInserter
 
     explicit UniformInserter(unsigned int num, std::string_view histname)
     {
+        TH1::AddDirectory(false);
         constexpr int hist_entries = 1500;
         // Print(fmt::format("creating histogram with name {}", histname));
         histogram_ = std::make_unique<TH1I>(histname.data(), histname.data(), hist_entries, 0, num);
-        histogram_->AddDirectory(false);
     }
 
     template <typename T>
