@@ -11,6 +11,9 @@ find_package(ROOT CONFIG REQUIRED)
 find_package(range-v3 REQUIRED)
 find_package(fmt REQUIRED)
 
+add_library(ROOTlib INTERFACE)
+target_link_libraries(ROOTlib INTERFACE ROOT::Core ROOT::MathCore ROOT::MathMore
+                                  ROOT::Hist ROOT::RIO ROOT::Gpad)
+
 add_executable(main main.cxx)
-target_link_libraries(main PUBLIC ROOT::Core ROOT::MathCore ROOT::MathMore
-                                  ROOT::Hist ROOT::RIO ROOT::Gpad fmt::fmt range-v3::range-v3)
+target_link_libraries(main PUBLIC ROOTlib fmt::fmt range-v3::range-v3)

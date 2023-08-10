@@ -76,7 +76,7 @@ class CSVWriter
 
     void write(std::string_view filename)
     {
-        auto ostream = std::ofstream(filename, std::ios_base::out | std::ios_base::trunc);
+        auto ostream = std::ofstream(filename.data(), std::ios_base::out | std::ios_base::trunc);
         write_to_file(ostream);
         ostream.close();
     }

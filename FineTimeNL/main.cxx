@@ -9,7 +9,7 @@
 #include <fmt/core.h>
 #include <iostream>
 #include <numeric>
-#include <ranges>
+// #include <ranges>
 #include <string>
 
 template <typename T>
