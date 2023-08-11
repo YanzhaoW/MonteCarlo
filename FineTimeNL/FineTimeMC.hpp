@@ -67,30 +67,34 @@ class FineTimeMC
         auto future = std::async(std::launch::async,
                                  [this, midProb]()
                                  {
+                                     auto rnd = ROOT::Math::GSLRandomEngine{};
+                                     rnd.Initialize();
+                                     rnd.SetSeed(SEED_NUM);
+                                     std::cout << "max: " << rnd.MaxInt() << "\n";
                                      std::vector<double> distribution;
-                                     auto inserter = UniformInserter{ totalSamples_, "fix distribution" };
-                                     auto multinomial = MultiNomial();
+                                     auto inserter = UniformInserter{ &rnd, totalSamples_, "fix distribution" };
+                                     auto multinomial = MultiNomial(&rnd);
                                      multinomial.SetEntrySize(totalSamples_);
                                      multinomial.SetLoopSize(loopSize_);
                                      const auto probs = dis_generator_(distribution, midProb);
                                      multinomial.Loop_on(distribution, inserter);
                                      auto [pre, post] = GetCenterBoundary(distribution, totalSamples_);
-                                     inserter.Draw({ pre, post });
+                                     inserter.DrawAll({ pre, post });
                                  });
         return future;
     }
 
     [[nodiscard]] auto Run_all_probs(auto& writer, double max = 1.)
     {
+        std::vector<std::future<void>> thread_results;
+        thread_results.reserve(threads_num_);
+
         if (sample_size_ == 0)
         {
-            throw std::logic_error("Epoch size is 0!");
+            return thread_results;
         }
 
         auto threads = Divide_into(sample_size_, threads_num_);
-
-        std::vector<std::future<void>> thread_results;
-        thread_results.reserve(threads_num_);
 
         for (const auto& thread_loopN : threads)
         {
@@ -99,8 +103,11 @@ class FineTimeMC
                 [this, &writer, max](unsigned int loopN)
                 {
                     // std::cout << loopN << "\n";
+                    auto rnd = ROOT::Math::GSLRandomEngine{};
+                    rnd.Initialize();
+                    rnd.SetSeed(SEED_NUM);
                     std::string histname = fmt::format("hist_{}", threads_count_++);
-                    auto inserter = UniformInserter{ totalSamples_, histname };
+                    auto inserter = UniformInserter{ &rnd, totalSamples_, histname };
                     Epoch(loopN, inserter, writer, max);
                     Add_inserter(std::move(inserter));
                 },
@@ -112,7 +119,7 @@ class FineTimeMC
 
     void Epoch(int loopN, auto& inserter, auto& writer, double max)
     {
-        auto multinomial = MultiNomial();
+        auto multinomial = MultiNomial(inserter.GetEngine());
         multinomial.SetEntrySize(totalSamples_);
         multinomial.SetLoopSize(loopSize_);
         std::vector<double> distribution;

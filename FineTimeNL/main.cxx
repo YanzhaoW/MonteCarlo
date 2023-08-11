@@ -17,8 +17,9 @@ auto main(int argc, char** argv) -> int
         "d, dataN", "number of data points", cxxopts::value<int>())(
         "c, cycles", "number of full cycles", cxxopts::value<int>())(
         "r, r_num", "number of random values", cxxopts::value<int>())(
-        "max", "max probability of the central bin", cxxopts::value<double>()->default_value("1."))("h,help",
-                                                                                                    "Print usage");
+        "max", "max probability of the central bin", cxxopts::value<double>()->default_value("1."))(
+        "prob", "probability of the central bin in fix distribution", cxxopts::value<double>()->default_value("0.3"))(
+        "h,help", "Print usage");
 
     auto optresult = options.parse(argc, argv);
     if (optresult.count("help"))
