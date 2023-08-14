@@ -6,11 +6,11 @@
 #include <string>
 
 const unsigned int SEED_NUM = 0;
+constexpr unsigned int BINSIZE = 3;
 
 auto main(int argc, char** argv) -> int
 {
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-    constexpr unsigned int BINSIZE = 11;
 
     cxxopts::Options options("FineTimeNL", "Command flags for FineTime NeuLAND");
     options.add_options()("t,thread", "thread numbers", cxxopts::value<int>())(
