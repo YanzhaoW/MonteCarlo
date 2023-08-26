@@ -1,4 +1,9 @@
+#pragma once
+
+#include "LineDrawer.hpp"
 #include "traits.hpp"
+#include <TCanvas.h>
+#include <TH1.h>
 #include <fmt/core.h>
 #include <fmt/ranges.h>
 #include <fstream>
@@ -7,7 +12,6 @@
 #include <range/v3/view.hpp>
 #include <string>
 #include <vector>
-
 
 template <int index, typename... T1>
     requires NoLessThan<index, std::tuple_size_v<std::remove_cvref_t<T1>>...>
@@ -45,13 +49,20 @@ auto GetNames(auto&& tuple)
     return names;
 }
 
-template <typename... ColumnTypes>
-class CSVWriter
+class Sinker
 {
   public:
-    explicit CSVWriter(ColumnTypes&&... columns)
+    virtual void write() = 0;
+};
+
+template <typename WriteStrategy, typename... ColumnTypes>
+class CSVWriter : public Sinker
+{
+  public:
+    explicit CSVWriter(WriteStrategy&& strategy, ColumnTypes&&... columns)
         : columns_{ std::make_tuple(std::forward<ColumnTypes>(columns)...) }
         , names_(GetNames(columns_))
+        , write_strategy_{ std::forward<WriteStrategy>(strategy) }
     {
     }
 
@@ -62,17 +73,33 @@ class CSVWriter
         Apply_element_wise(Pusher, columns_, std::make_tuple(std::forward<decltype(args)>(args)...));
     }
 
-    void write(std::string_view filename)
+    void write() override
     {
-        std::cout << "writing to file " << filename << "\n";
-        auto ostream = std::ofstream(filename.data(), std::ios_base::out | std::ios_base::trunc);
+        if (filename_.empty())
+        {
+            throw std::logic_error("csv output filename not specified!");
+        }
+        std::cout << "writing to file " << filename_ << "\n";
+        auto ostream = std::ofstream(filename_.c_str(), std::ios_base::out | std::ios_base::trunc);
         write_to_file(ostream);
-        std::cout << "writing to file " << filename << " finished\n";
+        std::cout << "writing to file " << filename_ << " finished\n";
+    }
+
+    void SetFileName(std::string_view filename)
+    {
+        filename_ = filename;
+    }
+
+    void operator()(const auto& result)
+    {
+        write_strategy_(this, result);
     }
 
   private:
     std::tuple<ColumnTypes...> columns_;
     std::vector<std::string> names_;
+    std::string filename_;
+    WriteStrategy write_strategy_;
 
     void write_to_file(auto& ostream)
     {
@@ -117,4 +144,54 @@ class CSVColumn
   private:
     std::string name_;
     std::vector<DataType> data_;
+};
+
+template <typename WriteStrategy>
+class HistDrawer : public Sinker
+{
+  public:
+    HistDrawer(std::string_view filename, WriteStrategy&& strategy)
+        : filename_{ filename }
+        , write_strategy_{ std::forward<WriteStrategy>(strategy) }
+    {
+    }
+
+    virtual void write()
+    {
+        constexpr int default_canvas_width = 1000;
+        constexpr int default_canvas_height = 800;
+        auto canvas = TCanvas{ "canvas", "canvas", default_canvas_width, default_canvas_height };
+        fmt::print("histogram total entries: {}\n", histogram_->GetEntries());
+        histogram_->Draw();
+        canvas.Update();
+
+        auto linesDraw = LineDrawer(2);
+        const auto& [start, end] = boundaries_;
+        auto lineL = linesDraw.Draw_vLine(&canvas, start);
+        auto lineR = linesDraw.Draw_vLine(&canvas, end);
+        lineL->Draw();
+        lineR->Draw();
+
+        canvas.SaveAs(filename_.c_str());
+    }
+
+    void operator()(const auto& result)
+    {
+        write_strategy_(this, result);
+    }
+
+    void Set(const Parallel_run_output& result)
+    {
+        // fmt::print("setting process: histogram total entries: {}\n", result.histogram->GetEntries());
+        histogram_ = std::unique_ptr<TH1>(static_cast<TH1*>(result.histogram->Clone()));
+        // fmt::print("pa {},pb {},pc {}, entryN {}", result.pre_prob, result.mid_prob, result.post_prob,
+        // result.entryN);
+        boundaries_ = { result.pre_prob * result.entryN, (1 - result.post_prob) * result.entryN };
+    }
+
+  private:
+    std::string filename_;
+    std::pair<double, double> boundaries_;
+    std::unique_ptr<TH1> histogram_;
+    std::remove_const_t<WriteStrategy> write_strategy_;
 };

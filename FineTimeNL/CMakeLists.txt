@@ -16,5 +16,4 @@ add_library(ROOTlib INTERFACE)
 target_link_libraries(ROOTlib INTERFACE ROOT::Core ROOT::MathCore ROOT::MathMore
                                   ROOT::Hist ROOT::RIO ROOT::Gpad)
 
-add_executable(main main.cxx)
-target_link_libraries(main PUBLIC ROOTlib fmt::fmt range-v3::range-v3 cxxopts::cxxopts)
+add_subdirectory(src)
